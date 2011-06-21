@@ -1,0 +1,9 @@
+.autotest
+History.txt
+Manifest.txt
+README.rdoc
+Rakefile
+bin/ric
+lib/rdoc/curses.rb
+lib/rdoc/markup/to_curses.rb
+test/test_rdoc_curses.rb
