@@ -13,19 +13,23 @@ class RDoc::Curses < RDoc::RI::Driver
   class Display < Curses::Pad
 
     attr_reader :current_row
-    attr_accessor :message
 
-    def initialize content
-      @current_row = 0
-
+    def initialize driver
       super Curses.lines - 1, Curses.cols
 
-      @formatter = RDoc::Markup::ToCurses.new self
-      @message = nil
+      @driver = driver
+      @message = driver.message
 
-      show content
+      clear
+    end
 
-      refresh
+    def clear
+      @current_row = 0
+      setpos 0, 0
+
+      resize 0, Curses.cols
+
+      noutrefresh
     end
 
     alias rows maxy
@@ -73,8 +77,12 @@ class RDoc::Curses < RDoc::RI::Driver
       noutrefresh
     end
 
-    def show content
-      @formatter.convert content
+    def show content, context
+      clear
+
+      formatter = RDoc::Markup::ToCurses.new self, context, @driver
+
+      formatter.convert content
 
       noutrefresh
     end
@@ -126,6 +134,7 @@ class RDoc::Curses < RDoc::RI::Driver
       return getstr
     ensure
       Curses.noecho
+      clear
     end
 
     def show message
@@ -154,6 +163,8 @@ Tab and shift-tab will navigate through links.
 Control-left and control-right will you back and forth in the history.
   HELP
 
+  attr_accessor :message
+
   def initialize
     options = {
       use_system:     true,
@@ -167,12 +178,28 @@ Control-left and control-right will you back and forth in the history.
     super options
 
     @colors = false
+    @message = nil
+    @display = nil
   end
 
-  def display document
-    @display.close
+  def display document, context
+    @display.show document, context
+  end
 
-    @display = RDoc::Curses::Display.new document
+  def display_class name
+    return if name =~ /#|\./
+
+    found, klasses, includes = classes_and_includes_for name
+
+    context = klasses.reverse.inject do |merged, k|
+      merged.merge k
+    end
+
+    return if found.empty?
+
+    out = class_document name, found, klasses, includes
+
+    display out, context
   end
 
   def display_name name
@@ -185,31 +212,14 @@ Control-left and control-right will you back and forth in the history.
     @message.error "#{name} not found"
   end
 
-  def run
-    Curses.init_screen
+  def find_module_named name
+    found = @stores.map do |store|
+      store.cache[:modules].find_all { |m| m == name }
+    end.flatten.uniq
 
-    if Curses.start_color then
-      Curses.use_default_colors
-      @colors = true
-      # This is a a hack.  I'm abusing the COLOR_GREEN constant to make a
-      # green on default background color pair.
-      Curses.init_pair Curses::COLOR_GREEN, Curses::COLOR_GREEN, -1
-    end
+    @message.show found.inspect
 
-    Curses.raw
-    Curses.noecho
-    Curses.curs_set 0 # invisible
-
-    @message = RDoc::Curses::Message.new
-
-    @display = RDoc::Curses::Display.new HELP
-    @display.message = @message
-
-    trap 'CONT' do
-      Curses.doupdate
-    end
-
-    event_loop
+    not found.empty?
   end
 
   def event_loop
@@ -238,6 +248,36 @@ Control-left and control-right will you back and forth in the history.
         @message.error "unknown key #{key.inspect}"
       end
     end
+  end
+
+  def run
+    Curses.init_screen
+
+    if Curses.start_color then
+      Curses.use_default_colors
+      @colors = true
+      # This is a a hack.  I'm abusing the COLOR_ constants to make a color on
+      # default background color pair.
+      Curses.init_pair Curses::COLOR_GREEN, Curses::COLOR_GREEN, -1
+      Curses.init_pair Curses::COLOR_CYAN,  Curses::COLOR_CYAN,  -1
+    end
+
+    Curses.raw
+    Curses.noecho
+    Curses.curs_set 0 # invisible
+
+    @message = RDoc::Curses::Message.new
+
+    @display = RDoc::Curses::Display.new self
+    @display.show HELP, nil
+
+    old_cont = trap 'CONT' do
+      Curses.doupdate
+    end
+
+    event_loop
+  ensure
+    trap 'CONT', old_cont if old_cont
   end
 
 end

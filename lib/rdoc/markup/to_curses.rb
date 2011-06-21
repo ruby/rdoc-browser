@@ -2,13 +2,23 @@ require 'rdoc/markup/to_rdoc'
 
 class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
 
-  def initialize window, markup = nil
+  CLASS_REGEXP_STR = RDoc::Markup::ToHtmlCrossref::CLASS_REGEXP_STR
+  METHOD_REGEXP_STR = RDoc::Markup::ToHtmlCrossref::METHOD_REGEXP_STR
+
+  attr_reader :window # :nodoc:
+  attr_accessor :indent # :nodoc:
+  attr_accessor :prefix # :nodoc:
+
+  def initialize window, context, driver, markup = nil
     super markup
 
-    @markup.add_special(/\\\S/, :SUPPRESSED_CROSSREF)
     @width = Curses.cols - 2
     @window = window
+    @context = context
+    @driver = driver
     init_tags
+
+    @seen = {}
 
     green_pair = Curses.color_pair Curses::COLOR_GREEN
     @heading_style = {}
@@ -26,6 +36,9 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     add_tag :BOLD, [true, Curses::A_BOLD],      [false, Curses::A_BOLD]
     add_tag :TT,   [true, Curses::A_NORMAL],    [false, Curses::A_NORMAL]
     add_tag :EM,   [true, Curses::A_UNDERLINE], [false, Curses::A_UNDERLINE]
+
+    @markup.add_special(/\\\S/, :SUPPRESSED_CROSSREF)
+    @markup.add_special RDoc::Markup::ToHtmlCrossref::CROSSREF_REGEXP, :CROSSREF
   end
 
   # :section: Visitor
@@ -42,9 +55,11 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
 
   def accept_heading heading
     use_prefix or @res << ' ' * @indent
+
     @window.attron @heading_style[heading.level] do
-      @res << convert_flow(attributes(heading.text))
+      @res << heading.text
     end
+
     @res << newline
   end
 
@@ -97,10 +112,11 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
       bullet = attributes(list_item.label) << ":\n"
       @prefix = [' ' * @indent]
       @indent += 2
-      @prefix << bullet << (' ' * @indent)
+      @prefix.concat bullet
+      @prefix << ' ' * @indent
     else
       bullet = type == :BULLET ? '*' :  @list_index.last.to_s + '.'
-      @prefix = [' ' * @indent] + bullet.ljust(bullet.length + 1)
+      @prefix = [' ' * @indent, bullet.ljust(bullet.length + 1)]
       width = bullet.length + 1
       @indent += width
     end
@@ -187,6 +203,46 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     @list_width = []
   end
 
+  ##
+  # Generates links between cross-references in the output.
+
+  def handle_special_CROSSREF special
+    name = special.text
+
+    return @seen[name] if @seen.include? name
+
+    lookup = name
+
+    if /#{CLASS_REGEXP_STR}([.#]|::)#{METHOD_REGEXP_STR}/ =~ lookup then
+      type = $2
+      type = '' if type == '.'  # will find either #method or ::method
+      method = "#{type}#{$3}"
+      container = @context.find_symbol_module($1)
+    elsif /^([.#]|::)#{METHOD_REGEXP_STR}/ =~ lookup then
+      type = $1
+      type = '' if type == '.'
+      method = "#{type}#{$2}"
+      container = @context
+    else
+      container = nil
+    end
+
+    if container then # method
+    else
+      ref = @driver.find_module_named lookup
+    end
+
+    if ref then
+      cyan_pair = Curses.color_pair Curses::COLOR_CYAN
+
+      @res.attron cyan_pair | Curses::A_UNDERLINE do
+        @res << lookup
+      end
+    else
+      @res << lookup
+    end
+  end
+
   # :section: Utilities
 
   ##
@@ -217,9 +273,13 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
         off_tags @res, item
         on_tags @res, item
       when RDoc::Markup::Special then
-        wrap convert_special item
+        use_prefix
+        # this doesn't wrap as our specials shouldn't have word breaks
+        @res << newline if item.text.length + @window.curx > @width
+        @res << ' ' * @indent if @window.curx == 0
+        convert_special item
       else
-        raise "Unknown flow element: #{item.inspect}"
+        raise "Unknown flow element #{item.class}: #{item.inspect}"
       end
     end
 
@@ -243,7 +303,7 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
   def use_prefix
     prefix = @prefix
     @prefix = nil
-    @res << prefix if prefix
+    convert_flow prefix if prefix
 
     prefix
   end
@@ -254,6 +314,7 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
 
   def wrap text
     return unless text && !text.empty?
+
     out = []
 
     text_len = @width - @indent
@@ -266,9 +327,11 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     prefix = @prefix || next_prefix
     @prefix = nil
 
-    out << prefix
-
-    out << wrap_first_line(text, text_len, next_prefix)
+    if @window.cury == 0 then
+      out << prefix
+    else
+      out << wrap_first_line(text, text_len, next_prefix)
+    end
 
     while text.length > text_len
       if text =~ re then
@@ -291,6 +354,11 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
 
     @res << out.join
   end
+
+  ##
+  # Wraps the first line based on the current cursor position to fit within
+  # +text_len+ columns.  If the line is wrapped +text+ is modified and
+  # +next_prefix+ is added to the output stream.
 
   def wrap_first_line text, text_len, next_prefix
     text_len = text_len - @window.curx
