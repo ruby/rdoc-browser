@@ -18,8 +18,6 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     @driver = driver
     init_tags
 
-    @seen = {}
-
     green_pair = Curses.color_pair Curses::COLOR_GREEN
     @heading_style = {}
     @heading_style.default = Curses::A_NORMAL | green_pair
@@ -208,8 +206,6 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
 
   def handle_special_CROSSREF special
     name = special.text
-
-    return @seen[name] if @seen.include? name
 
     lookup = name
 

@@ -151,16 +151,18 @@ class RDoc::Curses < RDoc::RI::Driver
   HELP = <<-HELP.gsub(/([\w.])\n(\w)/m, '\1 \2')
 This is ri + curses
 
-To look up a class, module method, or other documented item press 'g' followed
-by the item you would like to look up.
+To look up a class, module, method, or other documented item press 'g' then
+enter the name of the item you would like to look up.
 
-To quit, press q, ^C or ^D
+To quit, press Q, ^C or ^D
+
+To suspend press Z or ^Z
 
 Use the arrow keys, page up, page down, home or end to scroll.
 
-Tab and shift-tab will navigate through links.
+Tab will navigate through links.
 
-Control-left and control-right will you back and forth in the history.
+Shift-left and shift-right will you back and forward in the history.
   HELP
 
   attr_accessor :message
