@@ -9,13 +9,14 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
   attr_accessor :indent # :nodoc:
   attr_accessor :prefix # :nodoc:
 
-  def initialize window, context, driver, markup = nil
+  def initialize window, crossref, context, driver, markup = nil
     super markup
 
-    @width = Curses.cols - 2
-    @window = window
-    @context = context
-    @driver = driver
+    @width    = Curses.cols - 2
+    @window   = window
+    @context  = context
+    @driver   = driver
+    @crossref = crossref
     init_tags
 
     green_pair = Curses.color_pair Curses::COLOR_GREEN
@@ -36,7 +37,11 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     add_tag :EM,   [true, Curses::A_UNDERLINE], [false, Curses::A_UNDERLINE]
 
     @markup.add_special(/\\\S/, :SUPPRESSED_CROSSREF)
-    @markup.add_special RDoc::Markup::ToHtmlCrossref::CROSSREF_REGEXP, :CROSSREF
+
+    if @crossref then
+      @markup.add_special RDoc::Markup::ToHtmlCrossref::CROSSREF_REGEXP,
+                          :CROSSREF
+    end
   end
 
   # :section: Visitor
@@ -171,13 +176,18 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     indent = ' ' * (@indent + 2)
 
     verbatim.parts.each do |part|
-      @res << indent unless part == "\n"
-      @res << part
+      if part == "\n" then
+        @res << newline
+      else
+        @res << indent
+        @res << part
+        @newlines += 1
+      end
     end
 
-    @newlines += verbatim.parts.count "\n"
-
     @res << newline
+    @res << newline
+    #raise verbatim.parts.inspect
   end
 
   ##
@@ -237,6 +247,19 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     else
       @res << lookup
     end
+
+    nil
+  end
+
+  ##
+  # Generates links between cross-references in the output.
+
+  def handle_special_SUPPRESSED_CROSSREF special
+    text = special.text
+    text = text.sub('\\', '') unless in_tt?
+    @res << text
+
+    nil
   end
 
   # :section: Utilities

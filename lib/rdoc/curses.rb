@@ -45,6 +45,8 @@ class RDoc::Curses < RDoc::RI::Driver
     end
 
     def next_link
+      return if @links.empty?
+
       write_link @current_link, @driver.link_style
 
       @current_link += 1
@@ -70,6 +72,8 @@ class RDoc::Curses < RDoc::RI::Driver
     end
 
     def previous_link
+      return if @links.empty?
+
       write_link @current_link, @driver.link_style
 
       @current_link -= 1
@@ -123,10 +127,10 @@ class RDoc::Curses < RDoc::RI::Driver
       noutrefresh
     end
 
-    def show content, context
+    def show content, context, crossref = true
       clear
 
-      formatter = RDoc::Markup::ToCurses.new self, context, @driver
+      formatter = RDoc::Markup::ToCurses.new self, crossref, context, @driver
 
       formatter.convert content
 
@@ -161,6 +165,74 @@ class RDoc::Curses < RDoc::RI::Driver
       noutrefresh
     end
 
+  end
+
+  class History
+
+    attr_reader :position
+
+    def initialize
+      @pages = []
+      @position = 0
+    end
+
+    def back
+      return if @position == 0
+
+      @position -= 1
+
+      _, content, context = @pages[@position]
+
+      [content, context]
+    end
+
+    def forward
+      return if @position >= @pages.length - 1
+
+      @position += 1
+
+      _, content, context = @pages[@position]
+
+      [content, context]
+    end
+
+    def go name, content, context
+      @pages.slice! @position + 1, @pages.length unless
+        @position == @pages.length
+
+      @pages << [name, content, context]
+
+      @position = @pages.length - 1
+    end
+
+    def pages
+      @pages.map { |name,| name }
+    end
+
+    def list
+      out = RDoc::Markup::Document.new
+      out << RDoc::Markup::Heading.new(1, 'History')
+      out << RDoc::Markup::BlankLine.new
+
+      unless @pages.empty? then
+        list = RDoc::Markup::List.new :NUMBER
+
+        @pages.each_with_index do |(name,_,_), i|
+        name = "*#{name}*" if i == @position
+
+        name = RDoc::Markup::Paragraph.new name
+
+        list << RDoc::Markup::ListItem.new(nil, name)
+        end
+
+        out << list
+      else
+        out << RDoc::Markup::Paragraph.new('Your history is empty')
+      end
+
+      out
+    end
+    
   end
 
   class Message < Curses::Window
@@ -230,6 +302,7 @@ Shift-left and shift-right will you back and forward in the history.
   attr_accessor :message
   attr_reader :link_style
   attr_reader :hover_style
+  attr_reader :history
 
   def initialize
     options = {
@@ -243,13 +316,14 @@ Shift-left and shift-right will you back and forward in the history.
 
     super options
 
-    @colors = false
+    @colors  = false
     @message = nil
     @display = nil
+    @history = History.new
   end
 
-  def display document, context
-    @display.show document, context
+  def display document, context, crossref = true
+    @display.show document, context, crossref
 
     true
   end
@@ -267,7 +341,23 @@ Shift-left and shift-right will you back and forward in the history.
 
     out = class_document name, found, klasses, includes
 
+    @history.go name, out, context
+
     display out, context
+  end
+
+  def display_method name
+    found = load_methods_matching name
+
+    raise NotFoundError, name if found.empty?
+
+    filtered = filter_methods found, name
+
+    out = method_document name, filtered
+
+    @history.go name, out, nil
+
+    display out
   end
 
   def display_name name
@@ -278,14 +368,6 @@ Shift-left and shift-right will you back and forward in the history.
     true
   rescue NotFoundError
     @message.error "#{name} not found"
-  end
-
-  def find_module_named name
-    found = @stores.map do |store|
-      store.cache[:modules].find_all { |m| m == name }
-    end.flatten.uniq
-
-    not found.empty?
   end
 
   def event_loop
@@ -299,6 +381,9 @@ Shift-left and shift-right will you back and forward in the history.
 
       when 10,  Curses::Key::ENTER then display_name @display.current_link
 
+      when      Curses::Key::LEFT  then go_to @history.back
+      when      Curses::Key::RIGHT then go_to @history.forward
+
       when      Curses::Key::END   then @display.scroll_bottom
       when      Curses::Key::HOME  then @display.scroll_top
       when 'j', Curses::Key::DOWN  then @display.scroll_down
@@ -306,7 +391,10 @@ Shift-left and shift-right will you back and forward in the history.
       when ' ', Curses::Key::NPAGE then @display.page_down
       when      Curses::Key::PPAGE then @display.page_up
 
-      when 'i' then @message.show "link: #{@display.current_link}"
+      when 'h' then
+        display @history.list, nil
+      when 'i' then
+        @message.show "pos: #{@history.position} items: #{@history.pages.length}"
 
       when 'Q', 3, 4 then break # ^C, ^D
       when      26, Curses::Key::SUSPEND then
@@ -321,9 +409,24 @@ Shift-left and shift-right will you back and forward in the history.
     end
   end
 
-  def run
-    Curses.init_screen
+  def find_module_named name
+    found = @stores.map do |store|
+      store.cache[:modules].find_all { |m| m == name }
+    end.flatten.uniq
 
+    not found.empty?
+  end
+
+  def go_to page
+    if page then
+      #raise page.inspect
+      display(*page)
+    else
+      Curses.flash
+    end
+  end
+
+  def init_color
     if Curses.start_color then
       Curses.use_default_colors
       @colors = true
@@ -341,23 +444,35 @@ Shift-left and shift-right will you back and forward in the history.
       @link_style = Curses::A_UNDERLINE
       @hover_style = Curses::A_BOLD
     end
+  end
 
-    Curses.raw
+  def run
+    Curses.init_screen
+
+    init_color
+
     Curses.noecho
     Curses.curs_set 0 # invisible
 
     @message = RDoc::Curses::Message.new
 
     @display = RDoc::Curses::Display.new self
-    @display.show HELP, nil
+    @display.show HELP, nil, false
 
-    old_cont = trap 'CONT' do
-      Curses.doupdate
+    trap_resume do
+      event_loop
     end
+  end
 
-    event_loop
+  def trap_resume
+    Curses.raw
+    old_cont = trap 'CONT' do Curses.doupdate end
+
+    yield
+
   ensure
-    trap 'CONT', old_cont if old_cont
+    Curses.noraw
+    trap 'CONT', old_cont
   end
 
 end
