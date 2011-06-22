@@ -210,15 +210,15 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     lookup = name
 
     if /#{CLASS_REGEXP_STR}([.#]|::)#{METHOD_REGEXP_STR}/ =~ lookup then
-      type = $2
-      type = '' if type == '.'  # will find either #method or ::method
-      method = "#{type}#{$3}"
-      container = @context.find_symbol_module($1)
+      #type = $2
+      #type = '' if type == '.'  # will find either #method or ::method
+      #method = "#{type}#{$3}"
+      #container = @context.find_symbol_module($1)
     elsif /^([.#]|::)#{METHOD_REGEXP_STR}/ =~ lookup then
-      type = $1
-      type = '' if type == '.'
-      method = "#{type}#{$2}"
-      container = @context
+      #type = $1
+      #type = '' if type == '.'
+      #method = "#{type}#{$2}"
+      #container = @context
     else
       container = nil
     end
@@ -229,9 +229,9 @@ class RDoc::Markup::ToCurses < RDoc::Markup::Formatter
     end
 
     if ref then
-      cyan_pair = Curses.color_pair Curses::COLOR_CYAN
+      @window.links << [@window.cury, @window.curx, lookup]
 
-      @res.attron cyan_pair | Curses::A_UNDERLINE do
+      @res.attron @driver.link_style do
         @res << lookup
       end
     else

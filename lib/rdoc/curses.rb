@@ -14,6 +14,8 @@ class RDoc::Curses < RDoc::RI::Driver
 
     attr_reader :current_row
 
+    attr_reader :links
+
     def initialize driver
       super Curses.lines - 1, Curses.cols
 
@@ -25,11 +27,32 @@ class RDoc::Curses < RDoc::RI::Driver
 
     def clear
       @current_row = 0
+      @links = []
+      @current_link = -1
       setpos 0, 0
 
       resize 0, Curses.cols
 
+      super
+
       noutrefresh
+    end
+
+    def current_link
+      return nil if @current_link == -1
+
+      @links[@current_link].last
+    end
+
+    def next_link
+      write_link @current_link, @driver.link_style
+
+      @current_link += 1
+      @current_link = 0 if @current_link >= @links.length
+
+      write_link @current_link, @driver.hover_style
+
+      scroll_to @links[@current_link].first
     end
 
     alias rows maxy
@@ -44,6 +67,17 @@ class RDoc::Curses < RDoc::RI::Driver
       @current_row -= Curses.lines - 1
 
       noutrefresh
+    end
+
+    def previous_link
+      write_link @current_link, @driver.link_style
+
+      @current_link -= 1
+      @current_link = @links.length - 1 if @current_link < 0
+
+      write_link @current_link, @driver.hover_style
+
+      scroll_to @links[@current_link].first
     end
 
     def screen_position
@@ -61,6 +95,18 @@ class RDoc::Curses < RDoc::RI::Driver
 
     def scroll_down
       @current_row += 1
+
+      noutrefresh
+    end
+
+    def scroll_to row
+      height = Curses.lines - 2
+
+      if row < @current_row then
+        @current_row = row
+      elsif row > @current_row + height then
+        @current_row = row
+      end
 
       noutrefresh
     end
@@ -97,6 +143,22 @@ class RDoc::Curses < RDoc::RI::Driver
 
     def refresh
       super(*screen_position)
+    end
+
+    def write_link index, style
+      return if index == -1
+
+      y, x, text = @links[index]
+
+      setpos y, x
+
+      attrset style
+      addstr text
+      attrset Curses::A_NORMAL
+
+      setpos y, x # move cursor
+
+      noutrefresh
     end
 
   end
@@ -166,6 +228,8 @@ Shift-left and shift-right will you back and forward in the history.
   HELP
 
   attr_accessor :message
+  attr_reader :link_style
+  attr_reader :hover_style
 
   def initialize
     options = {
@@ -186,6 +250,8 @@ Shift-left and shift-right will you back and forward in the history.
 
   def display document, context
     @display.show document, context
+
+    true
   end
 
   def display_class name
@@ -219,8 +285,6 @@ Shift-left and shift-right will you back and forward in the history.
       store.cache[:modules].find_all { |m| m == name }
     end.flatten.uniq
 
-    @message.show found.inspect
-
     not found.empty?
   end
 
@@ -230,6 +294,11 @@ Shift-left and shift-right will you back and forward in the history.
       @message.clear
 
       case key = @message.getch
+      when 9                       then @display.next_link
+      when 'Z'                     then @display.previous_link # shift-tab
+
+      when 10,  Curses::Key::ENTER then display_name @display.current_link
+
       when      Curses::Key::END   then @display.scroll_bottom
       when      Curses::Key::HOME  then @display.scroll_top
       when 'j', Curses::Key::DOWN  then @display.scroll_down
@@ -237,10 +306,10 @@ Shift-left and shift-right will you back and forward in the history.
       when ' ', Curses::Key::NPAGE then @display.page_down
       when      Curses::Key::PPAGE then @display.page_up
 
-      #when 'i' then @message.show "color: #{@colors}"
+      when 'i' then @message.show "link: #{@display.current_link}"
 
       when 'Q', 3, 4 then break # ^C, ^D
-      when 'Z', 26, Curses::Key::SUSPEND then
+      when      26, Curses::Key::SUSPEND then
         Curses.close_screen
         Process.kill 'STOP', $$
 
@@ -260,8 +329,17 @@ Shift-left and shift-right will you back and forward in the history.
       @colors = true
       # This is a a hack.  I'm abusing the COLOR_ constants to make a color on
       # default background color pair.
-      Curses.init_pair Curses::COLOR_GREEN, Curses::COLOR_GREEN, -1
       Curses.init_pair Curses::COLOR_CYAN,  Curses::COLOR_CYAN,  -1
+      Curses.init_pair Curses::COLOR_GREEN, Curses::COLOR_GREEN, -1
+      Curses.init_pair Curses::COLOR_WHITE, Curses::COLOR_WHITE, -1
+
+      @link_style = Curses.color_pair(Curses::COLOR_CYAN) | Curses::A_UNDERLINE
+      @hover_style =
+        Curses.color_pair(Curses::COLOR_WHITE) | Curses::A_BOLD |
+        Curses::A_UNDERLINE
+    else
+      @link_style = Curses::A_UNDERLINE
+      @hover_style = Curses::A_BOLD
     end
 
     Curses.raw
