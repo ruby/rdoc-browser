@@ -1,26 +1,33 @@
 = rdoc-browser
 
-* FIX (url)
+* http://github.com/rdoc/rdoc-browser
 
 == DESCRIPTION:
 
-FIX (describe your package)
+rdoc-browser is an interactive documentation browser for the terminal.
 
 == FEATURES/PROBLEMS:
 
-* FIX (list of features or problems)
+* Navigate through all your documentation in a seamless manner
+* Automatic hyperlinking based on your installed gems
+* Navigate forward and backwards through your history
 
 == SYNOPSIS:
 
-  FIX (code sample of usage)
+To start the browser run:
+
+  rib
+
+You will be presented with a help screen describing the keys for using the
+browser.  You can return to the help screen at any time by pressing 'H'
 
 == REQUIREMENTS:
 
-* FIX (list of requirements)
+* Ruby 1.9.3
 
 == INSTALL:
 
-* FIX (sudo gem install, anything else)
+* gem install rdoc-browser
 
 == DEVELOPERS:
 
@@ -35,7 +42,7 @@ and generate the RDoc.
 
 (The MIT License)
 
-Copyright (c) 2011 FIX
+Copyright (c) 2011 Eric Hodel
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the
