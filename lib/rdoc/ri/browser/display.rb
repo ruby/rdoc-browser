@@ -1,8 +1,22 @@
+##
+# A Display is a Curses::Pad with functionality for scrolling and navigating
+# through hyperlinks.
+
 class RDoc::RI::Browser::Display < Curses::Pad
+
+  ##
+  # The row displayed at the top of the viewable window
 
   attr_reader :current_row
 
+  ##
+  # The hyperlinks in this document.  Stored as y position, x position and
+  # link text.
+
   attr_reader :links
+
+  ##
+  # Creates a new display that communicates with +driver+
 
   def initialize driver
     super Curses.lines - 1, Curses.cols
@@ -12,6 +26,9 @@ class RDoc::RI::Browser::Display < Curses::Pad
 
     clear
   end
+
+  ##
+  # Resets the display for showing a new page
 
   def clear
     @current_row = 0
@@ -26,11 +43,21 @@ class RDoc::RI::Browser::Display < Curses::Pad
     noutrefresh
   end
 
+  ##
+  # The content of the highlighted hyperlink.  If the user has not selected a
+  # hyperlink nil is returned.
+
   def current_link
     return nil if @current_link == -1
 
     @links[@current_link].last
   end
+
+  ##
+  # Advance to the next hyperlink and scroll the display appropriately.
+  #
+  # This will wrap to the beginning when advancing past the last link in the
+  # document.
 
   def next_link
     return if @links.empty?
@@ -45,7 +72,13 @@ class RDoc::RI::Browser::Display < Curses::Pad
     scroll_to @links[@current_link].first
   end
 
+  ##
+  # Number of rows in the document
+
   alias rows maxy
+
+  ##
+  # Scrolls down one page
 
   def page_down
     @current_row += Curses.lines - 1
@@ -53,11 +86,20 @@ class RDoc::RI::Browser::Display < Curses::Pad
     noutrefresh
   end
 
+  ##
+  # Scrolls up one page
+
   def page_up
     @current_row -= Curses.lines - 1
 
     noutrefresh
   end
+
+  ##
+  # Retreat to the previous hyperlink and scroll the display appropriately.
+  #
+  # This will wrap to the end when retreating past the first link in the
+  # document.
 
   def previous_link
     return if @links.empty?
@@ -72,6 +114,10 @@ class RDoc::RI::Browser::Display < Curses::Pad
     scroll_to @links[@current_link].first
   end
 
+  ##
+  # screen_position is used to refresh the display for the currently selected
+  # row and screen size.
+
   def screen_position
     @current_row = 0       if @current_row < 0
     @current_row = max_row if @current_row > max_row
@@ -79,17 +125,26 @@ class RDoc::RI::Browser::Display < Curses::Pad
     [@current_row, 0, 0, 0, Curses.lines - 2, Curses.cols]
   end
 
+  ##
+  # Scrolls to the end of the document
+
   def scroll_bottom
     @current_row = max_row
 
     noutrefresh
   end
 
+  ##
+  # Scrolls down one row
+
   def scroll_down
     @current_row += 1
 
     noutrefresh
   end
+
+  ##
+  # Scrolls to the row +row+
 
   def scroll_to row
     height = Curses.lines - 2
@@ -103,17 +158,28 @@ class RDoc::RI::Browser::Display < Curses::Pad
     noutrefresh
   end
 
+  ##
+  # Scrolls to the beginning of the document
+
   def scroll_top
     @current_row = 0
 
     noutrefresh
   end
 
+  ##
+  # Scrolls up one row
+
   def scroll_up
     @current_row -= 1
 
     noutrefresh
   end
+
+  ##
+  # Changes the displayed document to +content+.  +context+ is used for
+  # generating hyperlinks in +content+.  If you don't wish hyperlinks to
+  # appear set +crossref+ to false
 
   def show content, context, crossref = true
     clear
@@ -125,17 +191,23 @@ class RDoc::RI::Browser::Display < Curses::Pad
     noutrefresh
   end
 
+  ##
+  # The maximum scrollable row.
+
   def max_row
     maxy - Curses.lines + 1
   end
 
-  def noutrefresh
+  def noutrefresh # :nodoc:
     super(*screen_position)
   end
 
-  def refresh
+  def refresh # :nodoc:
     super(*screen_position)
   end
+
+  ##
+  # Writes the hyperlink at +index+ with +style+
 
   def write_link index, style
     return if index == -1
@@ -154,5 +226,4 @@ class RDoc::RI::Browser::Display < Curses::Pad
   end
 
 end
-
 

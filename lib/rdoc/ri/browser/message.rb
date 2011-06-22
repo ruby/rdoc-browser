@@ -1,4 +1,11 @@
+##
+# A Message provides message and a prompt for the ri browser
+
 class RDoc::RI::Browser::Message < Curses::Window
+
+  ##
+  # Creates a new Message instance that will sit at the bottom line of the
+  # screen
 
   def initialize
     super 1, Curses.cols, Curses.lines - 1, 0
@@ -6,11 +13,19 @@ class RDoc::RI::Browser::Message < Curses::Window
     keypad true
   end
 
+  ##
+  # Clears the message window
+
   def clear
+    super
+
     setpos 0, 0
-    clrtoeol
+
     noutrefresh
   end
+
+  ##
+  # Displays the error +message+ and flashes the screen
 
   def error message
     clear
@@ -18,6 +33,9 @@ class RDoc::RI::Browser::Message < Curses::Window
     noutrefresh
     Curses.flash
   end
+
+  ##
+  # Displays a prompt on the screen and returns the input given
 
   def prompt
     clear
@@ -34,6 +52,9 @@ class RDoc::RI::Browser::Message < Curses::Window
     clear
   end
 
+  ##
+  # Shows the informational +message+ on the screen
+
   def show message
     clear
     addstr message
@@ -41,5 +62,4 @@ class RDoc::RI::Browser::Message < Curses::Window
   end
 
 end
-
 

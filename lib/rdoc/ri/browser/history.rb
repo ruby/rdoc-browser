@@ -1,11 +1,26 @@
+##
+# History for the ri browser.
+#
+# History items have a name, content and context for generating hyperlinks.
+
 class RDoc::RI::Browser::History
 
+  ##
+  # The currently displayed page in the history
+
   attr_reader :position
+
+  ##
+  # Creates a new, empty History object
 
   def initialize
     @pages = []
     @position = 0
   end
+
+  ##
+  # Travels back one page in the history.  Returns nil if you're at the start
+  # of history, returns the content and context otherwise.
 
   def back
     return if @position == 0
@@ -17,6 +32,10 @@ class RDoc::RI::Browser::History
     [content, context]
   end
 
+  ##
+  # Travels forward one page in the history.  Returns nil if you're at the end
+  # of history, returns the content and context otherwise.
+
   def forward
     return if @position >= @pages.length - 1
 
@@ -27,6 +46,10 @@ class RDoc::RI::Browser::History
     [content, context]
   end
 
+  ##
+  # Goes to +name+ with +content+ and +context+, clearing items in the history
+  # ahead of this page.
+
   def go name, content, context
     @pages.slice! @position + 1, @pages.length unless
       @position == @pages.length
@@ -36,9 +59,15 @@ class RDoc::RI::Browser::History
     @position = @pages.length - 1
   end
 
+  ##
+  # The names of pages in the history
+
   def pages
     @pages.map { |name,| name }
   end
+
+  ##
+  # An RDoc::Markup::Document containing items in the history
 
   def list
     out = RDoc::Markup::Document.new
@@ -49,11 +78,11 @@ class RDoc::RI::Browser::History
       list = RDoc::Markup::List.new :NUMBER
 
       @pages.each_with_index do |(name,_,_), i|
-      name = "*#{name}*" if i == @position
+        name = "*#{name}*" if i == @position
 
-      name = RDoc::Markup::Paragraph.new name
+        name = RDoc::Markup::Paragraph.new name
 
-      list << RDoc::Markup::ListItem.new(nil, name)
+        list << RDoc::Markup::ListItem.new(nil, name)
       end
 
       out << list
@@ -63,7 +92,6 @@ class RDoc::RI::Browser::History
 
     out
   end
-  
-end
 
+end
 

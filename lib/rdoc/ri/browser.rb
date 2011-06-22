@@ -3,6 +3,10 @@ require 'rdoc'
 require 'rdoc/ri/driver'
 require 'rdoc/markup/to_curses'
 
+##
+# The ri browser is an interactive browser for documentation.  The browser is
+# curses-based.
+
 class RDoc::RI::Browser < RDoc::RI::Driver
 
   ##
@@ -30,10 +34,28 @@ Tab will navigate through links.
 Shift-left and shift-right will you back and forward in the history.
   HELP
 
+  ##
+  # The message window
+
   attr_accessor :message
+
+  ##
+  # The style for links
+
   attr_reader :link_style
+
+  ##
+  # The style for links that have been selected
+
   attr_reader :hover_style
+
+  ##
+  # The user's history of pages
+
   attr_reader :history
+
+  ##
+  # Creates a new interactive browser
 
   def initialize
     options = {
@@ -53,11 +75,18 @@ Shift-left and shift-right will you back and forward in the history.
     @history = RDoc::RI::Browser::History.new
   end
 
+  ##
+  # Displays +document+ to the user.  +context+ is used to generate
+  # cross-references if +crossref+ is true
+
   def display document, context, crossref = true
     @display.show document, context, crossref
 
     true
   end
+
+  ##
+  # Displays the class (or module) with +name+ to the user, if it exists
 
   def display_class name
     return if name =~ /#|\./
@@ -77,6 +106,9 @@ Shift-left and shift-right will you back and forward in the history.
     display out, context
   end
 
+  ##
+  # Displays the method +name+ to the user, if it exists
+
   def display_method name
     found = load_methods_matching name
 
@@ -91,6 +123,9 @@ Shift-left and shift-right will you back and forward in the history.
     display out
   end
 
+  ##
+  # Displays the class, module or method +name+ to the user, if it exists.
+
   def display_name name
     return if display_class name
 
@@ -100,6 +135,9 @@ Shift-left and shift-right will you back and forward in the history.
   rescue NotFoundError
     @message.error "#{name} not found"
   end
+
+  ##
+  # Handles key events from the user
 
   def event_loop
     loop do
@@ -140,6 +178,9 @@ Shift-left and shift-right will you back and forward in the history.
     end
   end
 
+  ##
+  # Finds the module (or class) with +name+ from the ri data stores
+
   def find_module_named name
     found = @stores.map do |store|
       store.cache[:modules].find_all { |m| m == name }
@@ -148,16 +189,22 @@ Shift-left and shift-right will you back and forward in the history.
     not found.empty?
   end
 
+  ##
+  # Displays +page+ on the screen if it exists and flashes the screen if it
+  # does not.
+
   def go_to page
     if page then
-      #raise page.inspect
       display(*page)
     else
       Curses.flash
     end
   end
 
-  def init_color
+  ##
+  # Initializes colors and styles
+
+  def init_style
     if Curses.start_color then
       Curses.use_default_colors
       @colors = true
@@ -177,6 +224,9 @@ Shift-left and shift-right will you back and forward in the history.
     end
   end
 
+  ##
+  # Starts up the ri browser
+
   def run
     Curses.init_screen
 
@@ -194,6 +244,10 @@ Shift-left and shift-right will you back and forward in the history.
       event_loop
     end
   end
+
+  ##
+  # Enters raw mode for the duration of the block and handles returning to
+  # curses mode if the ri browser was suspended
 
   def trap_resume
     Curses.raw
