@@ -3,7 +3,10 @@ History.txt
 Manifest.txt
 README.rdoc
 Rakefile
-bin/ric
-lib/rdoc/curses.rb
+bin/rib
 lib/rdoc/markup/to_curses.rb
-test/test_rdoc_curses.rb
+lib/rdoc/ri/browser.rb
+lib/rdoc/ri/browser/display.rb
+lib/rdoc/ri/browser/history.rb
+lib/rdoc/ri/browser/message.rb
+test/test_rdoc_markup_to_curses.rb

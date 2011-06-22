@@ -1,6 +1,6 @@
 require 'minitest/unit'
 require 'rdoc/markup/text_formatter_test_case'
-require 'rdoc/curses'
+require 'rdoc/ri/browser'
 require 'rdoc/markup/to_curses'
 
 class TestRDocMarkupToCurses < RDoc::Markup::TextFormatterTestCase
@@ -60,7 +60,7 @@ fourteen fifteen sixteen seventeen eighteen nineteen twenty
 
     text = MULTI_LINE.dup
 
-    out = @to.wrap text
+    @to.wrap text
 
     expected = <<-EXPECTED.chomp
 one two three four five six seven eight nine ten eleven twelve thirteen
@@ -76,7 +76,7 @@ fourteen fifteen sixteen seventeen eighteen nineteen twenty
 
     text = MULTI_LINE.dup
 
-    out = @to.wrap text
+    @to.wrap text
 
     expected = <<-EXPECTED.chomp
   one two three four five six seven eight nine ten eleven twelve thirteen
@@ -93,7 +93,7 @@ fourteen fifteen sixteen seventeen eighteen nineteen twenty
 
     text = MULTI_LINE.dup
 
-    out = @to.wrap text
+    @to.wrap text
 
     expected = <<-EXPECTED.chomp
 * one two three four five six seven eight nine ten eleven twelve thirteen
