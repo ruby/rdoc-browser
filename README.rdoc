@@ -23,7 +23,7 @@ browser.  You can return to the help screen at any time by pressing 'H'
 
 == REQUIREMENTS:
 
-* Ruby 1.9.3
+* An as-yet unreleased version of ruby with scrollpad support
 
 == INSTALL:
 
