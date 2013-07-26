@@ -91,7 +91,8 @@ Shift-left and shift-right will you back and forward in the history.
   def display_class name
     return if name =~ /#|\./
 
-    found, klasses, includes = classes_and_includes_for name
+    found, klasses, includes, extends =
+      classes_and_includes_and_extends_for name
 
     context = klasses.reverse.inject do |merged, k|
       merged.merge k
@@ -99,7 +100,7 @@ Shift-left and shift-right will you back and forward in the history.
 
     return if found.empty?
 
-    out = class_document name, found, klasses, includes
+    out = class_document name, found, klasses, includes, extends
 
     @history.go name, out, context
 
