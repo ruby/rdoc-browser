@@ -31,9 +31,12 @@ class RDoc::RI::Browser::Display < Curses::Pad
   # Resets the display for showing a new page
 
   def clear
-    @current_row = 0
-    @links = []
-    @current_link = -1
+    @current_content = nil
+    @current_context = nil
+    @current_link    = -1
+    @current_row     = 0
+    @links           = []
+
     setpos 0, 0
 
     resize 0, Curses.cols
@@ -184,6 +187,9 @@ class RDoc::RI::Browser::Display < Curses::Pad
   def show content, context, crossref = true
     clear
 
+    @current_content = content
+    @current_context = context
+
     formatter = RDoc::Markup::ToCurses.new self, crossref, context, @driver
 
     formatter.convert content
@@ -206,6 +212,17 @@ class RDoc::RI::Browser::Display < Curses::Pad
     super(*screen_position)
   end
 
+  def update_size
+    resize Curses.lines - 1, Curses.cols
+
+    content = @current_content
+    context = @current_context
+
+    clear
+
+    show content, context
+  end
+
   ##
   # Writes the hyperlink at +index+ with +style+
 
@@ -216,11 +233,9 @@ class RDoc::RI::Browser::Display < Curses::Pad
 
     setpos y, x
 
-    attrset style
-    addstr text
-    attrset Curses::A_NORMAL
-
-    setpos y, x # move cursor
+    attron style do
+      self << text
+    end
 
     noutrefresh
   end

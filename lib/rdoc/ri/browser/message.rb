@@ -61,5 +61,12 @@ class RDoc::RI::Browser::Message < Curses::Window
     noutrefresh
   end
 
+  def update_size
+    move Curses.lines - 1, 0
+    resize 1, Curses.cols
+
+    clear
+  end
+
 end
 

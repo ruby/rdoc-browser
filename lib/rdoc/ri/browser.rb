@@ -145,30 +145,34 @@ Shift-left and shift-right will you back and forward in the history.
       @message.clear
 
       case key = @message.getch
-      when 9                       then @display.next_link
-      when 'Z'                     then @display.previous_link # shift-tab
+      when 9                             then @display.next_link
+      when 'Z', 353, Curses::Key::BTAB   then @display.previous_link # shift-tab
 
-      when 10,  Curses::Key::ENTER then display_name @display.current_link
+      when 10,       Curses::Key::ENTER  then display_name @display.current_link
 
-      when      Curses::Key::LEFT  then go_to @history.back
-      when      Curses::Key::RIGHT then go_to @history.forward
+      when           Curses::Key::LEFT   then go_to @history.back
+      when           Curses::Key::RIGHT  then go_to @history.forward
 
-      when      Curses::Key::END   then @display.scroll_bottom
-      when      Curses::Key::HOME  then @display.scroll_top
-      when 'j', Curses::Key::DOWN  then @display.scroll_down
-      when 'k', Curses::Key::UP    then @display.scroll_up
-      when ' ', Curses::Key::NPAGE then @display.page_down
-      when      Curses::Key::PPAGE then @display.page_up
+      when           Curses::Key::END    then @display.scroll_bottom
+      when           Curses::Key::HOME   then @display.scroll_top
+      when 'j',      Curses::Key::DOWN   then @display.scroll_down
+      when 'k',      Curses::Key::UP     then @display.scroll_up
+      when ' ',      Curses::Key::NPAGE  then @display.page_down
+      when           Curses::Key::PPAGE  then @display.page_up
 
       when 'h' then
         display @history.list, nil
       when 'i' then
         @message.show "pos: #{@history.position} items: #{@history.pages.length}"
 
-      when 'Q', 3, 4 then break # ^C, ^D
+      when 'Q', 3, 4 then
+        break # ^C, ^D
       when      26, Curses::Key::SUSPEND then
         Curses.close_screen
         Process.kill 'STOP', $$
+      when nil,      Curses::Key::RESIZE then
+        @display.update_size
+        @message.update_size
 
       when 'g' then display_name @message.prompt
 
@@ -230,7 +234,7 @@ Shift-left and shift-right will you back and forward in the history.
   def run
     Curses.init_screen
 
-    init_color
+    init_style
 
     Curses.noecho
     Curses.curs_set 0 # invisible
