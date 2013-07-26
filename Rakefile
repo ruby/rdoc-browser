@@ -6,7 +6,7 @@ require 'hoe'
 Hoe.plugin :minitest
 Hoe.plugin :git
 
-Hoe.spec 'rdoc-browser' do
+hoe = Hoe.spec 'rdoc-browser' do
   developer 'Eric Hodel', 'drbrain@segment7.net'
 
   rdoc_locations <<
@@ -14,5 +14,7 @@ Hoe.spec 'rdoc-browser' do
 
   self.readme_file = 'README.rdoc'
 end
+
+hoe.test_prelude = 'gem "minitest", "~> 4.0"'
 
 # vim: syntax=ruby

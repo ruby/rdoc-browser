@@ -1,4 +1,6 @@
-require 'minitest/unit'
+gem 'minitest', '~> 4.0'
+require 'minitest/autorun'
+require 'rdoc'
 require 'rdoc/markup/text_formatter_test_case'
 require 'rdoc/ri/browser'
 require 'rdoc/markup/to_curses'
