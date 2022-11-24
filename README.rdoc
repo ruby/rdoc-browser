@@ -25,10 +25,6 @@ browser.  You can return to the help screen at any time by pressing 'H'
 
 * An as-yet unreleased version of ruby with scrollpad support
 
-== INSTALL:
-
-* gem install rdoc-browser
-
 == DEVELOPERS:
 
 After checking out the source, run:
